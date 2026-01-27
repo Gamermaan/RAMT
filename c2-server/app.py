@@ -8,6 +8,10 @@ from flask_cors import CORS
 import logging
 from datetime import datetime
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from auth import token_required, generate_token, verify_token
 from database import Database

