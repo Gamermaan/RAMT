@@ -1,0 +1,82 @@
+# Binaries and executables
+*.exe
+*.dll
+*.so
+*.dylib
+agent
+c2-server/app
+gui-controller/dist/
+
+# Go
+*.test
+*.out
+vendor/
+go.work
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.eslintcache
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+.env
+.env.local
+config.json
+secrets/
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Redis
+dump.rdb
+
+# Docker
+.dockerignore
+docker-compose.override.yml

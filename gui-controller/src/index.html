@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAMP Controller</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../node_modules/xterm/css/xterm.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo">
+                <h1>🚀 RAMP</h1>
+                <p>Remote Access Management Protocol</p>
+            </div>
+            
+            <nav class="nav-menu">
+                <button class="nav-item active" data-view="dashboard">
+                    <span class="icon">📊</span>
+                    Dashboard
+                </button>
+                <button class="nav-item" data-view="agents">
+                    <span class="icon">🖥️</span>
+                    Agents
+                </button>
+                <button class="nav-item" data-view="terminal">
+                    <span class="icon">💻</span>
+                    Terminal
+                </button>
+                <button class="nav-item" data-view="files">
+                    <span class="icon">📁</span>
+                    Files
+                </button>
+                <button class="nav-item" data-view="payload">
+                    <span class="icon">📦</span>
+                    Payload Generator
+                </button>
+                <button class="nav-item" data-view="tools">
+                    <span class="icon">🔧</span>
+                    Tools
+                </button>
+                <button class="nav-item" data-view="settings">
+                    <span class="icon">⚙️</span>
+                    Settings
+                </button>
+            </nav>
+            
+            <div class="connection-status">
+                <div class="status-indicator disconnected" id="connectionStatus"></div>
+                <span id="connectionText">Disconnected</span>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Header -->
+            <div class="header">
+                <h2 id="viewTitle">Dashboard</h2>
+                <div class="header-actions">
+                    <input type="text" id="c2ServerInput" placeholder="C2 Server (e.g., https://192.168.1.100:8443)" class="server-input">
+                    <button id="connectBtn" class="btn btn-primary">Connect</button>
+                </div>
+            </div>
+
+            <!-- Views Container -->
+            <div class="content">
+                <!-- Dashboard View -->
+                <div id="dashboardView" class="view active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h3>Active Agents</h3>
+                            <p class="stat-value" id="activeAgentsCount">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Sessions</h3>
+                            <p class="stat-value" id="totalSessionsCount">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Commands Executed</h3>
+                            <p class="stat-value" id="commandsCount">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Files Transferred</h3>
+                            <p class="stat-value" id="filesCount">0</p>
+                        </div>
+                    </div>
+                    
+                    <div class="recent-activity">
+                        <h3>Recent Activity</h3>
+                        <div id="activityLog" class="activity-log"></div>
+                    </div>
+                </div>
+
+                <!-- Agents View -->
+                <div id="agentsView" class="view">
+                    <div class="agents-toolbar">
+                        <button class="btn btn-secondary" id="refreshAgentsBtn">🔄 Refresh</button>
+                        <input type="text" id="searchAgents" placeholder="Search agents..." class="search-input">
+                    </div>
+                    <div class="agents-table-container">
+                        <table class="agents-table">
+                            <thead>
+                                <tr>
+                                    <th>Agent ID</th>
+                                    <th>Hostname</th>
+                                    <th>Username</th>
+                                    <th>Platform</th>
+                                    <th>IP Address</th>
+                                    <th>Last Seen</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="agentsTableBody">
+                                <tr>
+                                    <td colspan="7" class="no-data">No agents connected. Waiting for checkins...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Terminal View -->
+                <div id="terminalView" class="view">
+                    <div class="terminal-header">
+                        <select id="agentSelect" class="agent-select">
+                            <option value="">Select an agent...</option>
+                        </select>
+                        <button id="clearTerminal" class="btn btn-secondary">Clear</button>
+                    </div>
+                    <div id="terminal" class="terminal-container"></div>
+                </div>
+
+                <!-- Files View -->
+                <div id="filesView" class="view">
+                    <div class="file-transfer-container">
+                        <div class="panel">
+                            <h3>Upload to Agent</h3>
+                            <div class="file-upload">
+                                <select id="uploadAgentSelect" class="agent-select">
+                                    <option value="">Select agent...</option>
+                                </select>
+                                <input type="text" id="localFilePath" placeholder="Local file path" class="file-input">
+                                <button id="browseFileBtn" class="btn btn-secondary">Browse</button>
+                                <input type="text" id="remoteFilePath" placeholder="Remote file path on agent" class="file-input">
+                                <button id="uploadBtn" class="btn btn-primary">Upload</button>
+                            </div>
+                        </div>
+                        
+                        <div class="panel">
+                            <h3>Download from Agent</h3>
+                            <div class="file-download">
+                                <select id="downloadAgentSelect" class="agent-select">
+                                    <option value="">Select agent...</option>
+                                </select>
+                                <input type="text" id="remoteDownloadPath" placeholder="Remote file path" class="file-input">
+                                <input type="text" id="localSavePath" placeholder="Save to..." class="file-input">
+                                <button id="browseSaveBtn" class="btn btn-secondary">Browse</button>
+                                <button id="downloadBtn" class="btn btn-primary">Download</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="transfer-log">
+                        <h3>Transfer History</h3>
+                        <div id="transferLog" class="log-container"></div>
+                    </div>
+                </div>
+
+                <!-- Payload Generator View -->
+                <div id="payloadView" class="view">
+                    <div class="payload-generator">
+                        <h3>Payload Configuration</h3>
+                        <form id="payloadForm">
+                            <div class="form-group">
+                                <label>C2 Server Address</label>
+                                <input type="text" id="payloadC2Server" placeholder="192.168.1.100:8443" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Platform</label>
+                                <select id="payloadPlatform">
+                                    <option value="windows">Windows</option>
+                                    <option value="linux">Linux</option>
+                                    <option value="darwin">macOS</option>
+                                    <option value="android">Android</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Architecture</label>
+                                <select id="payloadArch">
+                                    <option value="amd64">x64 (amd64)</option>
+                                    <option value="386">x86 (386)</option>
+                                    <option value="arm64">ARM64</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group checkbox">
+                                <input type="checkbox" id="enablePersistence" checked>
+                                <label for="enablePersistence">Enable Persistence</label>
+                            </div>
+                            
+                            <div class="form-group checkbox">
+                                <input type="checkbox" id="obfuscate">
+                                <label for="obfuscate">Obfuscate Binary</label>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label>Certificate Pin (Optional)</label>
+                                <input type="text" id="certPin" placeholder="SHA256 fingerprint">
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-large">Generate Payload</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Tools View -->
+                <div id="toolsView" class="view">
+                    <div class="tools-grid">
+                        <div class="tool-card">
+                            <h3>🔐 SSL Certificate Generator</h3>
+                            <p>Generate self-signed SSL certificates for C2 server</p>
+                            <button class="btn btn-primary" id="sslGenBtn">Generate Certificate</button>
+                        </div>
+                        
+                        <div class="tool-card">
+                            <h3>📱 APK Signer</h3>
+                            <p>Sign Android APK files with custom keystore</p>
+                            <button class="btn btn-primary" id="apkSignerBtn">Sign APK</button>
+                        </div>
+                        
+                        <div class="tool-card">
+                            <h3>🔨 Build Agent</h3>
+                            <p>Cross-compile agent for all platforms</p>
+                            <button class="btn btn-primary" id="buildAgentBtn">Build All</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings View -->
+                <div id="settingsView" class="view">
+                    <div class="settings-container">
+                        <h3>Connection Settings</h3>
+                        <div class="form-group">
+                            <label>Default C2 Server</label>
+                            <input type="text" id="defaultC2Server" placeholder="https://192.168.1.100:8443">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Polling Interval (seconds)</label>
+                            <input type="number" id="pollingInterval" value="5" min="1">
+                        </div>
+                        
+                        <div class="form-group checkbox">
+                            <input type="checkbox" id="autoReconnect" checked>
+                            <label for="autoReconnect">Auto-reconnect on disconnect</label>
+                        </div>
+                        
+                        <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../node_modules/xterm/lib/xterm.js"></script>
+    <script src="../node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
+    <script src="renderer.js"></script>
+</body>
+</html>
