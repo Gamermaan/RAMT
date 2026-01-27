@@ -295,10 +295,18 @@ function updateAgentSelectors() {
         const select = document.getElementById(selectId);
         if (!select) return;
 
+        // Preserve current selection
+        const currentValue = select.value;
+
         select.innerHTML = '<option value="">Select an agent...</option>' +
             agents.map(agent =>
                 `<option value="${agent.agent_id}">${agent.hostname} (${agent.platform})</option>`
             ).join('');
+
+        // Restore selection if agent still exists
+        if (currentValue && agents.some(a => a.agent_id === currentValue)) {
+            select.value = currentValue;
+        }
     });
 }
 
@@ -581,11 +589,18 @@ function saveSettings() {
 }
 
 function loadSettings() {
+    // Load saved C2 server address
+    const savedC2Server = localStorage.getItem('c2Server');
+    if (savedC2Server) {
+        document.getElementById('c2ServerInput').value = savedC2Server;
+        logActivity(`Loaded saved C2 server: ${savedC2Server}`);
+    }
+
+    // Load other settings
     const saved = localStorage.getItem('rampSettings');
     if (saved) {
         const settings = JSON.parse(saved);
         if (settings.defaultC2Server) {
-            document.getElementById('c2ServerInput').value = settings.defaultC2Server;
             document.getElementById('defaultC2Server').value = settings.defaultC2Server;
         }
         if (settings.pollingInterval) {

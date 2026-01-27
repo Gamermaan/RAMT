@@ -40,32 +40,38 @@ logger = logging.getLogger(__name__)
 
 @app.route('/api/agent/checkin', methods=['POST'])
 def agent_checkin():
-    """Agent initial check-in"""
+    """Agent check-in endpoint"""
     try:
         data = request.get_json()
         agent_id = data.get('agent_id')
         
         if not agent_id:
-            return jsonify({'error': 'Missing agent_id'}), 400
+            return jsonify({'error': 'agent_id required'}), 400
         
-        # Register or update agent
+        # Update agent data including IP address
         agent_data = {
             'agent_id': agent_id,
-            'hostname': data.get('data', {}).get('hostname'),
-            'username': data.get('data', {}).get('username'),
-            'platform': data.get('data', {}).get('platform'),
-            'version': data.get('data', {}).get('version'),
-            'last_seen': datetime.now().isoformat(),
-            'ip_address': request.remote_addr
+            'hostname': data.get('hostname', 'unknown'),
+            'username': data.get('username', 'unknown'),
+            'platform': data.get('platform', 'unknown'),
+            'version': data.get('version', '1.0'),
+            'ip_address': request.remote_addr,  # Capture IP from request
+            'last_seen': datetime.now().isoformat()
         }
         
-        db.register_agent(agent_data)
-        logger.info(f"Agent checked in: {agent_id} from {request.remote_addr}")
+        db.update_agent(agent_data)
+        
+        # Check for pending tasks
+        task = task_queue.get_task(agent_id)
+        
+        if task:
+            return jsonify({
+                'task': task,
+                'interval': 5
+            })
         
         return jsonify({
-            'type': 'ack',
-            'timestamp': int(datetime.now().timestamp()),
-            'data': {'status': 'registered'}
+            'interval': 5
         })
     
     except Exception as e:
