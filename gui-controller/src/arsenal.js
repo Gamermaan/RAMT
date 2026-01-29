@@ -376,8 +376,9 @@ async function triggerChaos() {
 
     // Alert
     if (doAlert) {
-        // Simple MessageBox
-        payloadParts.push(`Add-Type -AssemblyName PresentationCore; [System.Windows.MessageBox]::Show('${alertMsg}','System Error',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Error)`);
+        // System Modal MessageBox (Blocks interaction until clicked)
+        // using ServiceNotification (0x200000) to ensure it pops up on top of everything
+        payloadParts.push(`Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.MessageBox]::Show('${alertMsg}','System Error',[System.Windows.Forms.MessageBoxButtons]::OK,[System.Windows.Forms.MessageBoxIcon]::Error,[System.Windows.Forms.MessageBoxDefaultButton]::Button1,[System.Windows.Forms.MessageBoxOptions]::ServiceNotification)`);
     }
 
     // URL
