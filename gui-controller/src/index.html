@@ -460,8 +460,7 @@
                                     <div class="card-icon">📜</div>
                                     <h4>Fileless Exec</h4>
                                     <p>Run scripts directly in memory without touching disk.</p>
-                                    <button class="btn-feature"
-                                        onclick="showNotification('Info', 'Phase 7 Feature')">Execute</button>
+                                    <button class="btn-feature" onclick="configureFilelessExec()">Inject</button>
                                 </div>
                                 <div class="feature-card">
                                     <div class="card-icon">🔌</div>
@@ -577,6 +576,59 @@
             <div class="modal-actions">
                 <button class="btn btn-secondary" onclick="closeReverseTCPModal()">Cancel</button>
                 <button class="btn btn-primary" onclick="startReverseTCP()">Hack</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fileless Execution Modal (Drag & Drop + Manual + Cross Platform) -->
+    <div id="filelessModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content large-modal"
+            style="width: 80%; height: 80%; max-width: 900px; display: flex; flex-direction: column;">
+            <h3>👻 Fileless Execution (Ghost Mode)</h3>
+            <p>Execute scripts directly in volatile memory.</p>
+
+            <div class="fileless-controls" style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center;">
+                <label>Target Platform:</label>
+                <select id="shellTypeSelector" class="control-input"
+                    style="flex: 1; padding: 8px; border-radius: 4px; background: #333; color: #fff; border: 1px solid #555;">
+                    <option value="powershell">Windows (PowerShell)</option>
+                    <option value="bash">Linux/Android (Bash)</option>
+                    <option value="sh">Linux/iOS (Sh)</option>
+                    <option value="python">Cross-Platform (Python)</option>
+                </select>
+
+                <div class="mode-toggles"
+                    style="display: flex; background: #222; border-radius: 4px; overflow: hidden;">
+                    <button id="tabUpload" class="btn-tab active" onclick="switchFilelessTab('upload')"
+                        style="border: none; padding: 8px 16px; cursor: pointer; background: #444; color: white;">📂
+                        Upload</button>
+                    <button id="tabManual" class="btn-tab" onclick="switchFilelessTab('manual')"
+                        style="border: none; padding: 8px 16px; cursor: pointer; background: #222; color: #aaa;">📝
+                        Manual</button>
+                </div>
+            </div>
+
+            <!-- Upload View -->
+            <div id="viewUpload" class="fileless-view" style="flex: 1; display: flex; flex-direction: column;">
+                <div id="dropZone" class="drop-zone"
+                    style="flex: 1; display: flex; align-items: center; justify-content: center; border: 2px dashed #555; border-radius: 8px; font-size: 1.2em; color: #888; transition: all 0.3s;">
+                    <div style="text-align: center;">
+                        <p style="margin: 0;">📂 Drag & Drop Script File</p>
+                        <small style="color: #666;">Supports .ps1, .sh, .py, .txt</small>
+                    </div>
+                    <input type="file" id="fileInput" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Manual Editor View -->
+            <div id="viewManual" class="fileless-view" style="flex: 1; display: none; flex-direction: column;">
+                <textarea id="psScriptInput" class="code-editor" placeholder="# Type your script payload here..."
+                    style="width: 100%; flex: 1; background: #1a1a1a; color: #0f0; padding: 10px; border: 1px solid #444; font-family: 'Consolas', monospace; resize: none;"></textarea>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 15px;">
+                <button class="btn btn-secondary" onclick="closeFilelessModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="startFilelessExec()">🚀 Execute Payload</button>
             </div>
         </div>
     </div>

@@ -1,8 +1,0 @@
-Flask==2.3.2
-Flask-CORS==4.0.0
-PyJWT==2.8.0
-cryptography==41.0.3
-redis==4.6.0
-python-dotenv==1.0.0
-
-cryptography==41.0.7
