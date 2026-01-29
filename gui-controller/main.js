@@ -18,19 +18,19 @@ function createWindow() {
             contextIsolation: false,
             enableRemoteModule: true
         },
-        icon: path.join(__dirname, 'assets/icon.png'),
+        icon: path.join(__dirname, 'assets/app_icon.ico'),
         title: 'RAMP Controller',
         backgroundColor: '#1a1a2e'
     });
 
+    // Load the index.html
     mainWindow.loadFile('src/index.html');
 
-    // Open DevTools in development
-    if (process.env.NODE_ENV === 'development') {
-        mainWindow.webContents.openDevTools();
-    }
+    // Open DevTools for debugging
+    // mainWindow.webContents.openDevTools();
 
-    mainWindow.on('closed', function () {
+    // Handle window close
+    mainWindow.on('closed', () => {
         mainWindow = null;
     });
 }
@@ -88,10 +88,23 @@ ipcMain.on('show-notification', (event, { title, body }) => {
     const notification = new Notification({
         title,
         body,
-        icon: path.join(__dirname, 'assets/icon.png')
+        icon: path.join(__dirname, 'assets/app_icon.ico')
     });
 
     notification.show();
+});
+
+ipcMain.on('show-context-menu', (event) => {
+    const { Menu, MenuItem } = require('electron');
+    const menu = new Menu();
+
+    menu.append(new MenuItem({ label: 'Cut', role: 'cut' }));
+    menu.append(new MenuItem({ label: 'Copy', role: 'copy' }));
+    menu.append(new MenuItem({ label: 'Paste', role: 'paste' }));
+    // menu.append(new MenuItem({ type: 'separator' }));
+    // menu.append(new MenuItem({ label: 'Select All', role: 'selectall' }));
+
+    menu.popup({ window: mainWindow });
 });
 
 console.log('[*] RAMP Controller starting...');

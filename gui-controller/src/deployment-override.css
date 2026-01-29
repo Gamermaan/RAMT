@@ -1,0 +1,12 @@
+/* Deployment View - Production Styling */
+
+/* Only show when deployment view is active */
+#deploymentView {
+    display: none;
+}
+
+#deploymentView.active {
+    display: block !important;
+}
+
+/* No other overrides needed - use default deployment.css */

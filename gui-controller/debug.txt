@@ -1,0 +1,22 @@
+Quick debug test - open DevTools in the GUI (press F12) and run this in Console:
+
+```javascript
+// Check if deploymentView exists
+console.log('DeploymentView element:', document.getElementById('deploymentView'));
+
+// Check its classes
+const dv = document.getElementById('deploymentView');
+if (dv) {
+    console.log('Classes:', dv.className);
+    console.log('Display style:', window.getComputedStyle(dv).display);
+    console.log('Has content:', dv.innerHTML.length > 0);
+}
+
+// Try to manually show it
+if (dv) {
+    dv.classList.add('active');
+    dv.style.display = 'block';
+}
+```
+
+Run this and tell me what it prints!

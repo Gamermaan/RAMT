@@ -7,6 +7,9 @@
     <title>RAMP Controller</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="payload.css">
+    <link rel="stylesheet" href="deployment.css">
+    <link rel="stylesheet" href="deployment-override.css">
+    <link rel="stylesheet" href="arsenal.css">
     <link rel="stylesheet" href="../node_modules/xterm/css/xterm.css">
 </head>
 
@@ -15,7 +18,11 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="logo">
-                <h1>🚀 RAMP</h1>
+                <div class="logo-header">
+                    <img src="../assets/app_icon.ico" alt="RAMP Logo"
+                        style="height: 48px; width: 48px; vertical-align: middle;">
+                    <h1 style="display: inline; vertical-align: middle; margin-left: 10px;">RAMP</h1>
+                </div>
                 <p>Remote Access Management Protocol</p>
             </div>
 
@@ -39,6 +46,14 @@
                 <button class="nav-item" data-view="payload">
                     <span class="icon">📦</span>
                     Payload Generator
+                </button>
+                <button class="nav-item" data-view="deployment">
+                    <span class="icon">🚀</span>
+                    Deployment
+                </button>
+                <button class="nav-item" data-view="arsenal">
+                    <span class="icon">⚔️</span>
+                    Arsenal
                 </button>
                 <button class="nav-item" data-view="tools">
                     <span class="icon">🔧</span>
@@ -131,7 +146,10 @@
                         <select id="agentSelect" class="agent-select">
                             <option value="">Select an agent...</option>
                         </select>
-                        <button id="clearTerminal" class="btn btn-secondary">Clear</button>
+                        <div class="terminal-actions">
+                            <button id="toggleBurstMode" class="btn btn-secondary">⚡ Interactive Mode: OFF</button>
+                            <button id="clearTerminal" class="btn btn-secondary">Clear</button>
+                        </div>
                     </div>
                     <div id="terminal" class="terminal-container"></div>
                 </div>
@@ -234,61 +252,335 @@
                             <div id="build-status" class="build-status"></div>
                         </div>
                     </div>
-                    </section>
+                </div>
 
-                    <!-- Tools View -->
-                    <div id="toolsView" class="view">
-                        <div class="tools-grid">
-                            <div class="tool-card">
-                                <h3>🔐 SSL Certificate Generator</h3>
-                                <p>Generate self-signed SSL certificates for C2 server</p>
-                                <button class="btn btn-primary" id="sslGenBtn">Generate Certificate</button>
+                <!-- Tools View -->
+                <div id="toolsView" class="view">
+                    <div class="tools-grid">
+                        <div class="tool-card">
+                            <h3>🔐 SSL Certificate Generator</h3>
+                            <p>Generate self-signed SSL certificates for C2 server</p>
+                            <button class="btn btn-primary" id="sslGenBtn">Generate Certificate</button>
+                        </div>
+
+                        <div class="tool-card">
+                            <h3>📱 APK Signer</h3>
+                            <p>Sign Android APK files with custom keystore</p>
+                            <button class="btn btn-primary" id="apkSignerBtn">Sign APK</button>
+                        </div>
+
+                        <div class="tool-card">
+                            <h3>🔨 Build Agent</h3>
+                            <p>Cross-compile agent for all platforms</p>
+                            <button class="btn btn-primary" id="buildAgentBtn">Build All</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deployment View -->
+                <div id="deploymentView" class="view">
+                    <div class="deployment-tabs">
+                        <button class="tab-btn active" data-tab="local">🏠 Local</button>
+                        <button class="tab-btn" data-tab="cloud">☁️ Free Cloud</button>
+                        <button class="tab-btn deployment-locked" data-tab="premium">💎 Premium 🔒</button>
+                    </div>
+
+                    <!-- Local Deployment Tab -->
+                    <div id="tab-local" class="tab-content active">
+                        <div class="deployment-section">
+                            <h3>🏠 Run C2 Server on Localhost</h3>
+
+                            <div class="form-group">
+                                <label>Port</label>
+                                <input type="number" id="local-port" value="8443" min="1024" max="65535">
                             </div>
 
-                            <div class="tool-card">
-                                <h3>📱 APK Signer</h3>
-                                <p>Sign Android APK files with custom keystore</p>
-                                <button class="btn btn-primary" id="apkSignerBtn">Sign APK</button>
+                            <div class="form-group">
+                                <label>Admin Password</label>
+                                <input type="password" id="local-password" value="kali">
                             </div>
 
-                            <div class="tool-card">
-                                <h3>🔨 Build Agent</h3>
-                                <p>Cross-compile agent for all platforms</p>
-                                <button class="btn btn-primary" id="buildAgentBtn">Build All</button>
+                            <div class="server-status">
+                                <span class="status-label">Status:</span>
+                                <span id="local-server-status" class="status-value">🔴 Not Running</span>
+                            </div>
+
+                            <div class="deployment-actions">
+                                <button id="start-local-server" class="btn btn-success">▶️ Start Server</button>
+                                <button id="stop-local-server" class="btn btn-danger" disabled>⏹️ Stop
+                                    Server</button>
+                                <button id="local-advanced" class="btn btn-secondary">⚙️ Advanced</button>
+                            </div>
+
+                            <div class="deployment-info">
+                                <p>ℹ️ <strong>Perfect for:</strong> Development, testing, offline use</p>
+                                <p>💰 <strong>Cost:</strong> FREE</p>
+                            </div>
+
+                            <div id="local-logs" class="deployment-logs" style="display:none;">
+                                <h4>Server Logs</h4>
+                                <div id="local-log-output" class="log-output"></div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Settings View -->
-                    <div id="settingsView" class="view">
-                        <div class="settings-container">
-                            <h3>Connection Settings</h3>
-                            <div class="form-group">
-                                <label>Default C2 Server</label>
-                                <input type="text" id="defaultC2Server" placeholder="https://192.168.1.100:8443">
+                    <!-- Free Cloud Deployment Tab -->
+                    <div id="tab-cloud" class="tab-content">
+                        <div class="deployment-section">
+                            <h3>☁️ Deploy to Free Platforms</h3>
+                            <p class="subtitle">No credit card required!</p>
+
+                            <div class="platform-selector">
+                                <div class="platform-card" data-platform="render">
+                                    <input type="radio" name="cloud-platform" value="render" id="platform-render"
+                                        checked>
+                                    <label for="platform-render">
+                                        <strong>Render.com</strong> ⭐ Recommended<br>
+                                        • 750 hours/month free<br>
+                                        • Auto-sleeps after 15 min<br>
+                                        • Free SSL
+                                    </label>
+                                </div>
+
+                                <div class="platform-card" data-platform="railway">
+                                    <input type="radio" name="cloud-platform" value="railway" id="platform-railway">
+                                    <label for="platform-railway">
+                                        <strong>Railway.app</strong><br>
+                                        • $5 credit/month<br>
+                                        • No auto-sleep<br>
+                                        • Better uptime
+                                    </label>
+                                </div>
+
+                                <div class="platform-card" data-platform="fly">
+                                    <input type="radio" name="cloud-platform" value="fly" id="platform-fly">
+                                    <label for="platform-fly">
+                                        <strong>Fly.io</strong><br>
+                                        • 3 VMs free<br>
+                                        • Global deployment<br>
+                                        • 160GB bandwidth
+                                    </label>
+                                </div>
                             </div>
 
                             <div class="form-group">
-                                <label>Polling Interval (seconds)</label>
-                                <input type="number" id="pollingInterval" value="5" min="1">
+                                <label>App Name</label>
+                                <input type="text" id="cloud-app-name" placeholder="ramp-c2">
                             </div>
 
-                            <div class="form-group checkbox">
-                                <input type="checkbox" id="autoReconnect" checked>
-                                <label for="autoReconnect">Auto-reconnect on disconnect</label>
+                            <div class="form-group">
+                                <label>Admin Password</label>
+                                <input type="password" id="cloud-password" placeholder="Auto-generated">
+                                <button id="generate-password" class="btn btn-small">🔄 Generate</button>
                             </div>
 
-                            <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+                            <div class="deployment-actions">
+                                <button id="deploy-to-cloud" class="btn btn-primary">🚀 Deploy to Cloud</button>
+                                <button id="cloud-advanced" class="btn btn-secondary">⚙️ Advanced</button>
+                            </div>
+
+                            <div class="deployment-info">
+                                <p>ℹ️ <strong>Perfect for:</strong> Testing, low-traffic production</p>
+                                <p>💰 <strong>Cost:</strong> $0/month</p>
+                            </div>
+
+                            <div id="cloud-deployments" class="active-deployments">
+                                <h4>Active Deployments</h4>
+                                <div id="deployment-list"></div>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Premium Platforms Tab -->
+                    <div id="tab-premium" class="tab-content">
+                        <div class="deployment-section locked-section">
+                            <h3>💎 Enterprise-Grade Hosting</h3>
+
+                            <div class="premium-overlay">
+                                <div class="lock-icon">🔒</div>
+                                <h2>Premium Features Coming Soon</h2>
+                                <p>Deploy to AWS, Azure, GCP with advanced features:</p>
+                                <ul>
+                                    <li>✅ Auto-scaling (handle 1000+ agents)</li>
+                                    <li>✅ Load balancing</li>
+                                    <li>✅ 99.99% uptime SLA</li>
+                                    <li>✅ DDoS protection</li>
+                                    <li>✅ Managed database backups</li>
+                                </ul>
+                                <p><strong>💰 Cost:</strong> Starting at $12/month</p>
+                                <button class="btn btn-premium" disabled>🔓 Unlock Premium</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arsenal View -->
+                <div id="arsenalView" class="view">
+                    <div id="arsenal-section" class="arsenal-container">
+                        <div class="arsenal-header">
+                            <h2>⚔️ Advanced Arsenal</h2>
+                            <p>Specialized capabilities for high-value operations.</p>
+                        </div>
+
+                        <!-- Target Selection (Future) -->
+                        <!-- <div class="arsenal-controls">
+                            <label>Target Agent:</label>
+                            <select id="arsenal-target-select"><option>Select Agent...</option></select>
+                        </div> -->
+
+                        <div class="arsenal-grid">
+                            <!-- Category: Stealth -->
+                            <div class="feature-category stealth">
+                                <h3>🥷 Stealth & Evasion</h3>
+                                <div class="feature-card">
+                                    <div class="card-icon">🎭</div>
+                                    <h4>Network Jitter</h4>
+                                    <p>Randomize check-in intervals to evade pattern detection.</p>
+                                    <button class="btn-feature" onclick="configureJitter()">Configure</button>
+                                </div>
+                                <div class="feature-card">
+                                    <div class="card-icon">👻</div>
+                                    <h4>Ghost Mode</h4>
+                                    <p>Emergency silence. Pause all network traffic immediately.</p>
+                                    <button class="btn-feature"
+                                        onclick="showNotification('Info', 'Coming Soon')">Activate</button>
+                                </div>
+                            </div>
+
+                            <!-- Category: Power -->
+                            <div class="feature-category power">
+                                <h3>⚡ Power Execution</h3>
+                                <div class="feature-card">
+                                    <div class="card-icon">🐚</div>
+                                    <h4>Interactive Shell</h4>
+                                    <p>Spawn a fully interactive PTY for SSH/Python support.</p>
+                                    <button class="btn-feature" onclick="launchInteractiveShell()">Launch PTY</button>
+                                </div>
+                                <div class="feature-card">
+                                    <div class="card-icon">📜</div>
+                                    <h4>Fileless Exec</h4>
+                                    <p>Run scripts directly in memory without touching disk.</p>
+                                    <button class="btn-feature"
+                                        onclick="showNotification('Info', 'Phase 7 Feature')">Execute</button>
+                                </div>
+                                <div class="feature-card">
+                                    <div class="card-icon">🔌</div>
+                                    <h4>Reverse TCP</h4>
+                                    <p>Connect back to a listener (Netcat) on custom IP:Port.</p>
+                                    <button class="btn-feature" onclick="configureReverseTCP()">Connect</button>
+                                </div>
+                            </div>
+
+                            <!-- Category: Surveillance -->
+                            <div class="feature-category spy">
+                                <h3>👁️ Surveillance</h3>
+                                <div class="feature-card">
+                                    <div class="card-icon">📸</div>
+                                    <h4>Screenshot</h4>
+                                    <p>Capture current desktop display.</p>
+                                    <button class="btn-feature"
+                                        onclick="showNotification('Info', 'Spyware Module Required')">Capture</button>
+                                </div>
+                                <div class="feature-card">
+                                    <div class="card-icon">🔑</div>
+                                    <h4>Browser Thief</h4>
+                                    <p>Dump saved passwords from Chrome/Edge.</p>
+                                    <button class="btn-feature"
+                                        onclick="showNotification('Info', 'Spyware Module Required')">Dump
+                                        Creds</button>
+                                </div>
+                            </div>
+
+                            <!-- Category: System -->
+                            <div class="feature-category system">
+                                <h3>🛡️ System Admin</h3>
+                                <div class="feature-card">
+                                    <div class="card-icon">🛑</div>
+                                    <h4>Disable Defender</h4>
+                                    <p>Attempt to disable AV (Admin Required).</p>
+                                    <button class="btn-feature danger"
+                                        onclick="showNotification('Warning', 'Requires High Privileges! Coming Phase 7')">Execute</button>
+                                </div>
+                                <div class="feature-card">
+                                    <div class="card-icon">💥</div>
+                                    <h4>Self Destruct</h4>
+                                    <p>Wipe agent and traces from disk.</p>
+                                    <button class="btn-feature danger"
+                                        onclick="showNotification('Warning', 'Permanent Action')">Detonate</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings View -->
+                <div id="settingsView" class="view">
+                    <div class="settings-container">
+                        <h3>Connection Settings</h3>
+                        <div class="form-group">
+                            <label>Default C2 Server</label>
+                            <input type="text" id="defaultC2Server" placeholder="https://192.168.1.100:8443">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Polling Interval (seconds)</label>
+                            <input type="number" id="pollingInterval" value="5" min="1">
+                        </div>
+
+                        <div class="form-group checkbox">
+                            <input type="checkbox" id="autoReconnect" checked>
+                            <label for="autoReconnect">Auto-reconnect on disconnect</label>
+                        </div>
+
+                        <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <script src="../node_modules/xterm/lib/xterm.js"></script>
-        <script src="../node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
-        <script src="renderer.js"></script>
-        <script src="payload.js"></script>
+    <script src="../node_modules/xterm/lib/xterm.js"></script>
+    <script src="../node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
+    <script src="deployment.js"></script>
+    <script src="arsenal.js"></script>
+    <script src="renderer.js"></script>
+    <script src="payload.js"></script>
+    <!-- Jitter Configuration Modal -->
+    <div id="jitterModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>🎭 Network Jitter Config</h3>
+            <p>Set the randomness percentage (0.0 to 1.0)</p>
+            <div class="form-group">
+                <input type="number" id="jitterInput" step="0.1" min="0" max="1.0" value="0.2">
+                <span class="hint">Recommended: 0.2 (20%)</span>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeJitterModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveJitterConfig()">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reverse TCP Configuration Modal -->
+    <div id="reverseTCPModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3>🔌 Reverse TCP Shell</h3>
+            <p>Configure Netcat Listener Details</p>
+            <div class="form-group">
+                <label>Listener IP</label>
+                <input type="text" id="tcpIpInput" placeholder="192.168.1.50">
+            </div>
+            <div class="form-group">
+                <label>Listener Port</label>
+                <input type="number" id="tcpPortInput" placeholder="4444" value="4444">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeReverseTCPModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="startReverseTCP()">Hack</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 
 </html>

